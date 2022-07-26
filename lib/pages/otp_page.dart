@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:logger/logger.dart';
+import 'package:nsdd/providers/otp_verification_provider.dart';
 import 'package:nsdd/utils/constants.dart';
 import 'package:nsdd/utils/file_path.dart';
 import 'package:pinput/pinput.dart';
+import 'package:provider/provider.dart';
 
 class OtpPage extends StatelessWidget {
-  const OtpPage({super.key});
+  final Map<String, dynamic> args;
+  OtpPage({super.key, required this.args});
+  final _otpFormKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
@@ -81,24 +84,38 @@ class OtpPage extends StatelessWidget {
                       ),
                       kPageItemSpacing2,
                       Text(
-                        'We sent code to 034*******1 to verify your account',
+                        args['message'],
                         style: Theme.of(context).textTheme.headline6!.copyWith(
                               color: kGrayColor,
                             ),
                       ),
                       kPageItemSpacing2,
-                      Pinput(
-                        androidSmsAutofillMethod:
-                            AndroidSmsAutofillMethod.smsRetrieverApi,
-                        defaultPinTheme: defaultPinTheme,
-                        focusedPinTheme: focusedPinTheme,
-                        submittedPinTheme: submittedPinTheme,
-                        validator: (s) {
-                          return s == '1234' ? null : 'Pin is incorrect';
-                        },
-                        pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
-                        showCursor: true,
-                        onCompleted: (pin) => Logger().e(pin),
+                      Form(
+                        key: _otpFormKey,
+                        child: Consumer<OTPVerificationProvider>(
+                          builder: (context, otp, child) => Pinput(
+                            androidSmsAutofillMethod:
+                                AndroidSmsAutofillMethod.smsRetrieverApi,
+                            defaultPinTheme: defaultPinTheme,
+                            focusedPinTheme: focusedPinTheme,
+                            submittedPinTheme: submittedPinTheme,
+                            validator: (s) {
+                              return otp.otpVerified
+                                  ? null
+                                  : 'Pin is incorrect';
+                            },
+                            pinputAutovalidateMode:
+                                PinputAutovalidateMode.onSubmit,
+                            showCursor: true,
+                            onCompleted: (pin) {
+                              otp.otpVerified = true;
+                              Provider.of<OTPVerificationProvider>(context,
+                                      listen: false)
+                                  .verifyOTP(
+                                      _otpFormKey, context, args['id'], 1, pin);
+                            },
+                          ),
+                        ),
                       ),
                       kPageItemSpacing4,
                       SizedBox(
